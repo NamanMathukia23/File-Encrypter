@@ -4,10 +4,9 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                dir('Password Protection') {
+                dir('Password Protection') {  // go to the folder with src and test
                     sh '''
                         echo "Building Java project..."
-                        ls
                         mkdir -p build
                         javac -d build src/*.java
                         echo "Build successful"
@@ -20,18 +19,18 @@ pipeline {
             steps {
                 dir('Password Protection') {
                     sh '''
-                        echo "Running JUnit tests for File-Encrypter..."
+                        echo "Running JUnit tests..."
+                        
+                        # Remove old/corrupt JUnit JAR if exists
+                        rm -f junit-platform-console-standalone.jar
 
-                        # Download JUnit if missing or empty
-                        if [ ! -f junit-platform-console-standalone.jar ] || [ ! -s junit-platform-console-standalone.jar ]; then
-                            echo "Downloading JUnit..."
-                            curl -L -o junit-platform-console-standalone.jar \
-                            https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone/1.10.0/junit-platform-console-standalone-1.10.0.jar
-                        fi
+                        # Download fresh JUnit JAR
+                        curl -L -o junit-platform-console-standalone.jar \
+                        https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone/1.10.0/junit-platform-console-standalone-1.10.0.jar
 
-                        # Verify download
+                        # Verify JAR
                         if [ ! -s junit-platform-console-standalone.jar ]; then
-                            echo "ERROR: JUnit download failed!"
+                            echo "ERROR: JUnit JAR download failed!"
                             exit 1
                         fi
 
@@ -40,12 +39,8 @@ pipeline {
                         find test -name "*.java" > test-sources.txt
                         javac -cp junit-platform-console-standalone.jar:build -d test-build @test-sources.txt
 
-                        # Run tests
-                        java -jar junit-platform-console-standalone.jar \
-                        --class-path build:test-build \
-                        --scan-class-path
-
-                        echo "JUnit tests executed successfully"
+                        # Run JUnit tests
+                        java -jar junit-platform-console-standalone.jar --class-path build:test-build --scan-class-path
                     '''
                 }
             }
@@ -55,10 +50,9 @@ pipeline {
             steps {
                 dir('Password Protection') {
                     sh '''
-                        echo "Deploying (Packaging) File-Encrypter Application..."
-                        mkdir -p dist
-                        jar cf dist/FileEncrypter.jar -C build .
-                        echo "Deployment successful - Artifact ready in dist/FileEncrypter.jar"
+                        echo "Packaging application..."
+                        jar cf FileEncrypter.jar -C build .
+                        echo "Deployment successful"
                     '''
                 }
             }
